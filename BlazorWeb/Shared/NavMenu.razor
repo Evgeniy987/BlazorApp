@@ -1,0 +1,17 @@
+﻿<MudNavMenu>
+    <MudNavGroup Title="Настройки">
+        <MudNavLink Href="/users" Match="NavLinkMatch.Prefix" Icon="far fa-users fa-fw" IconColor="Color.Dark">Сотрудники</MudNavLink>
+        
+    </MudNavGroup>
+</MudNavMenu>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

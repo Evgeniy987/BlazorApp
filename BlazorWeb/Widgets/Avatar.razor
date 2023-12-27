@@ -1,0 +1,23 @@
+﻿<MudTooltip Text="@Name" Placement="Placement.Top">
+    <MudAvatar Color="(Color)BadgeColor" Size="@Size">
+        @if (Size == Size.Small)
+        {
+            <small>
+                @BadgeText
+            </small>
+        }
+        else
+        {
+            @BadgeText
+        }
+    </MudAvatar>
+</MudTooltip>
+
+@code {
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public int BadgeColor { get; set; }
+    [Parameter] public Size Size { get; set; } = Size.Small;
+
+    private string? BadgeText { get => ((Name != null && Name != "") ? Name[..1] : "") + ((Name != null && Name.Contains(' ')) ? Name.Split(" ")[1][..1] : ""); }
+
+}

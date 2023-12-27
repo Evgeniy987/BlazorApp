@@ -1,0 +1,121 @@
+﻿@page "/users"
+@attribute [Authorize(Roles = "Admin")]
+
+@using DAL_Dapper
+@using DAL_Dapper.Models
+@using Data
+
+@inject IDapperData _db
+@inject IDialogService DialogService
+
+<MudTable Items="@users" Loading="@isLoading">
+    <ToolBarContent>
+        <MudText Typo="Typo.h5" Class="mr-2">Пользователи системы</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="New" Title="новый сотрудник" />
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>
+            Сотрудник, должность
+        </MudTh>
+        <MudTh>
+            Контакты
+        </MudTh>
+        <MudTh>
+            Роли в системе
+        </MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Сотрудник" Class="d-flex">
+            <MudAvatar Color="(Color)context.BadgeColor" Class="mr-2">@context.BadgeText</MudAvatar>
+            <MudElement>
+                <MudLink OnClick="@((e) => Edit(context))">@context.Name</MudLink>
+                <MudText Typo="Typo.body2">@context.LongName</MudText>
+            </MudElement>
+
+        </MudTd>
+        <MudTd DataLabel="Контакты">
+            @if (string.IsNullOrEmpty(context.EmailAddress) == false)
+            {
+                <MudLink Href=@($"mailto:{context.EmailAddress}") Target="_blank" Typo="Typo.body1">
+                    <i class="fas fa-envelope"></i>
+                    @context.EmailAddress
+                </MudLink>
+            }
+            <br />
+            @if (string.IsNullOrEmpty(context.PhoneNumber) == false)
+            {
+                <MudLink Href=@($"tel:{context.PhoneNumber}") Target="_blank" Typo="Typo.body2">
+                    <i class="fas fa-phone"></i>
+                    @context.PhoneNumber
+                </MudLink>
+            }
+        </MudTd>
+        <MudTd DataLabel="Роли">
+            @foreach (var tag in context.Tags)
+            {
+                <MudChip Size="Size.Small" Color="@((Color)tag.BadgeColor)">
+                    @tag.Title
+                </MudChip>
+            }
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+
+@code {
+    [CascadingParameter]
+    UserProfile UserProfile { get; set; } = new();
+
+    // Property used to add or edit the currently selected user
+    User objUser = new();
+
+    string? title;
+    // Collection to display the existing users
+
+    private IEnumerable<User> users = new List<User>();
+    private IEnumerable<Tag> tags = new List<Tag>();
+
+    bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = (await _db.UsersActive()).OrderBy(p => p.Name);
+        await _db.GetTags(users, "User");
+        isLoading = false;
+
+    }
+
+
+    async void New()
+    {
+        var obj = new User();
+        var parameters = new DialogParameters { ["obj"] = obj, ["UserProfile"] = UserProfile };
+        string title = $"Новый сотрудник";
+
+        var dialog = DialogService.Show<New>(title, parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await OnInitializedAsync();
+            StateHasChanged();
+        }
+    }
+
+    async void Edit(User obj)
+    {
+        var parameters = new DialogParameters { ["obj"] = obj, ["UserProfile"] = UserProfile };
+        var dialog = DialogService.Show<Edit>("Карточка сотрудника", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await OnInitializedAsync();
+            StateHasChanged();
+        }
+    }
+
+
+
+}

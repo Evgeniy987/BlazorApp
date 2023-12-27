@@ -1,0 +1,121 @@
+﻿@using DAL_Dapper.Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+
+@inherits LayoutComponentBase
+
+@inject AuthenticationStateProvider _ap
+@inject ProtectedLocalStorage ProtectedLocalStorage
+@inject NavigationManager _nm
+
+<MudThemeProvider Theme="MyTheme" @ref="@_mudThemeProvider" />
+<MudDialogProvider CloseButton="true"
+                   DisableBackdropClick="true"
+                   FullWidth="true"
+                   MaxWidth="MaxWidth.ExtraSmall" />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <AuthorizeView>
+        <Authorized>
+            <MudAppBar Elevation="0" Color="Color.Tertiary">
+                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+                <MudSpacer />
+                <MudLink OnClick="Logout">
+                    <Avatar Name="@userProfile.UserName" BadgeColor="@userProfile.BadgeColor" Size="Size.Medium" />
+                </MudLink>
+            </MudAppBar>
+            <MudDrawer @bind-Open="_drawerOpen" Elevation="1">
+                <NavMenu />
+            </MudDrawer>
+            <MudMainContent>
+                <MudContainer MaxWidth="MaxWidth.False" Class="pt-6 my-1 mx-1">
+                    <CascadingValue Value="@userProfile">
+                        @Body
+                    </CascadingValue>
+                </MudContainer>
+            </MudMainContent>
+        </Authorized>
+    </AuthorizeView>
+</MudLayout>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    string? errMessage, userMail, userToken, userInfo;
+    bool _drawerOpen = true;
+    private MudThemeProvider? _mudThemeProvider;
+
+    private User? currentUser;
+    private UserProfile userProfile = new();
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var user = (await AuthenticationStateTask).User;
+
+                if (user != null && user.Identity!.IsAuthenticated)
+                {
+                    userMail = user.Identity.Name;
+
+                    var psUser = await ProtectedLocalStorage.GetAsync<User>("userProfile");
+
+                    if (psUser.Success && psUser.Value?.EmailAddress == userMail)
+                    {
+                        currentUser = psUser.Value;
+                        userProfile.BadgeColor = currentUser!.BadgeColor;
+                        userProfile.UserId = currentUser.Id;
+                        userProfile.UserName = currentUser.Name;
+                        StateHasChanged();
+                    }
+
+                }
+                else
+                {
+                    _nm.NavigateTo("/login");
+                }
+            }
+            catch (Exception ex)
+            {
+                errMessage = "OnAfterRenderAsync:" + ex.Message;
+                
+            }
+        }
+
+
+    }
+
+    void Logout()
+    {
+        ((CustomAuthenticationStateProvider)_ap).MarkUserAsLoggedOut();
+        _nm.NavigateTo("/login");
+    }
+
+    MudTheme MyTheme = new MudTheme()
+        {
+            //определяем свои цвета
+            Palette = new PaletteLight()
+            {
+                Primary = "#0d6efd",
+                Secondary = "#6c757d",
+                Warning = "#ffc107",
+                Info = "#0dcaf0"
+            },
+
+
+            LayoutProperties = new LayoutProperties()
+            {
+                DrawerWidthLeft = "260px",
+                DrawerWidthRight = "300px"
+            },
+
+        };
+}

@@ -1,0 +1,117 @@
+﻿@using FluentValidation
+@using DAL_Dapper
+@using DAL_Dapper.Models
+@using Data
+@using BlazorWeb.Validators
+@inject ISnackbar Snackbar
+
+@inject IDapperData _db
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            @MudDialog.Title
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+
+        <MudForm Model="@obj" @ref="form" Validation="@(formValidator.ValidateValue)" ValidationDelay="0">
+
+            <div class="d-flex flex-row align-content-center mb-2">
+                <MudAvatar Color="(MudBlazor.Color)obj.BadgeColor" Class="mr-2">@obj.BadgeText</MudAvatar>
+                <MudChip Color="Color.Primary" OnClick="@(e => {obj.BadgeColor = (int) Color.Primary;})"></MudChip>
+                <MudChip Color="Color.Secondary" OnClick="@(e => {obj.BadgeColor = (int) Color.Secondary;})"></MudChip>
+                <MudChip Color="Color.Info" OnClick="@(e => {obj.BadgeColor = (int)Color.Info;})"></MudChip>
+                <MudChip Color="Color.Success" OnClick="@(e => {obj.BadgeColor = (int)Color.Success;})"></MudChip>
+                <MudChip Color="Color.Warning" OnClick="@(e => {obj.BadgeColor = (int)Color.Warning;})"></MudChip>
+                <MudChip Color="Color.Error" OnClick="@(e => {obj.BadgeColor = (int)Color.Error;})"></MudChip>
+            </div>
+            <MudTextField @bind-Value="obj.Name"
+                          For="@(() => obj.Name)"
+                          Variant="Variant.Outlined"
+                          Class="mt-3"
+                          Label="*Сотрудник" />
+
+            <MudTextField @bind-Value="obj.LongName"
+                          For="@(() => obj.LongName)"
+                          Variant="Variant.Outlined"
+                          Class="mt-3"
+                          Label="Должность" />
+
+            <MudTextField @bind-Value="@obj.PhoneNumber"
+                          For="@(() => obj.PhoneNumber)"
+                          InputType="InputType.Telephone"
+                          Variant="Variant.Outlined"
+                          Class="mt-3"
+                          Label="Телефон" />
+
+            <MudTextField @bind-Value="@obj.EmailAddress"
+                          For="@(() => obj.EmailAddress)"
+                          InputType="InputType.Email"
+                          Variant="Variant.Outlined"
+                          Class="mt-3"
+                          Label="*Email" />
+
+            <MudTextField Variant="Variant.Outlined" Lines="3" Class="mt-3"
+                          @bind-Value="obj.Notes"
+                          For="@(() => obj.Notes)"
+                          Label="Примечания" />
+
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudText Typo="Typo.overline">* обязательные поля </MudText>
+        <MudButton Color="Color.Primary" OnClick="Submit">Сохранить</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    MudDialogInstance MudDialog { get; set; } = new();
+
+    [Parameter]
+    public UserProfile UserProfile { get; set; } = new();
+
+    [Parameter]
+    public User obj { get; set; } = default!;
+
+    MudForm? form = default!;
+
+    UserModelFluentValidator formValidator = new UserModelFluentValidator();
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async void Submit()
+    {
+        await form!.Validate();
+
+        if (form.IsValid)
+        {
+            var checkEmail = await _db.UserByEmail(obj.EmailAddress!);
+
+            if (checkEmail != null)
+            {
+                Snackbar.Add("Указанный Email уже используется!", MudBlazor.Severity.Error);
+            }
+            else
+            {
+                obj.CreatedAt = DateTime.Now;
+                obj.CreatedBy = UserProfile.UserName;
+                obj.AccessToken = "c65b20e01aab92912afb52f4bfcced55";
+                obj.Id = await _db.UserAdd(obj);
+
+                Snackbar.Add("Пользователь добавлен", MudBlazor.Severity.Success);
+                MudDialog.Close(DialogResult.Ok(obj));
+            }
+            
+        }
+
+    }
+
+
+    
+
+}

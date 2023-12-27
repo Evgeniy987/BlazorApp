@@ -1,0 +1,119 @@
+﻿@page "/login"
+@layout TinyLayout
+
+@using System.ComponentModel.DataAnnotations;
+@using DAL_Dapper
+@using DAL_Dapper.Models
+@using BlazorWeb.Data
+@using BlazorWeb.Validators
+
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject IDapperData _db
+@inject ISnackbar Snackbar
+
+<MudContainer Class="mt-16 d-flex justify-center">
+    <MudCard Elevation="8" Class="rounded-lg mt-16 pa-6" Style="width: 25rem;">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Class="align-content-center">
+                    СТРУНА
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudForm Model="@namePassword" @ref="@form" Validation="@(loginUserValidator.ValidateValue)">
+                <MudCardContent>
+                    <MudTextField @bind-Value="namePassword.EmailAddress"
+                                  For="@(() => namePassword.EmailAddress)"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Email"
+                                  OnBlur="CheckNewUser"
+                                  Label="Email" />
+
+                    <MudTextField @bind-Value="namePassword.Password"
+                                  For="@(() => namePassword.Password)"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Password"
+                                  Label="Пароль" />
+
+                    
+
+                    @if (showNewAlert)
+                    {
+                        <MudAlert Severity="Severity.Warning">
+                            Придумайте пароль для доступа в систему.
+                            Пароль должен соотвествовать политикам безопасности:
+                            <small>
+                                <ul>
+                                    <li>- длина пароля от 8 до 16 символов</li>
+                                    <li>- используются как заглавные, так и строчные символы</li>
+                                </ul>
+                            </small>
+
+                        </MudAlert>
+                    }
+
+                </MudCardContent>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mx-auto" OnClick="ValidateUser">Вход</MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+
+
+@code {
+    [Parameter] public string id { get; set; } = string.Empty;
+
+    private NamePassword namePassword = new();
+
+    MudForm? form = default!;
+
+    bool showNewAlert;
+
+    NamePasswordFluentValidator loginUserValidator => new NamePasswordFluentValidator(_db);
+
+
+
+    private async Task CheckNewUser()
+    {
+        var usr = await _db.UserByEmail(namePassword.EmailAddress);
+        if (usr?.AccessToken == "c65b20e01aab92912afb52f4bfcced55")
+            showNewAlert = true;
+
+    }
+
+
+
+    private async Task<bool> ValidateUser()
+    {
+        await form!.Validate();
+
+        if (form.IsValid)
+        {
+
+            var currentUser = await _db.UserByNamePassword(namePassword);
+
+            if (currentUser != null && currentUser.EmailAddress != null)
+            {
+                await _db.GetTags(new List<User> { currentUser }, "User");
+                await ((CustomAuthenticationStateProvider)AuthenticationStateProvider).MarkUserAsAuthenticated(currentUser);
+
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                Snackbar.Add("Доступ запрещен", MudBlazor.Severity.Error);
+                
+            }
+
+
+        }
+
+        return await Task.FromResult(true);
+    }
+}
